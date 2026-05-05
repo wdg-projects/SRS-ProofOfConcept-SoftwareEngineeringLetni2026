@@ -1,23 +1,19 @@
 import tkinter as tk
 import tkinter.messagebox as tkmsgbox
 
-from .identity import Identity
-
 from ..models.customer import Customer
 
-from ..services.interface.dbaccess import DBAccess
+from ..services.interface.remotedb import Remotedb
 
 class AccountSearcher(tk.Toplevel):
-    access: DBAccess
-    identity: Identity
+    client: Remotedb
 
     mode: tk.StringVar
     idtext: tk.StringVar
 
-    def __init__(self, master: tk.Misc | None = None, *, access: DBAccess, identity: Identity) -> None:
+    def __init__(self, master: tk.Misc | None = None, *, client: Remotedb) -> None:
         super().__init__(master)
-        self.access = access
-        self.identity = identity
+        self.client = client
 
         self.mode = tk.StringVar()
         self.idtext = tk.StringVar()
@@ -33,29 +29,27 @@ class AccountSearcher(tk.Toplevel):
 
     def on_submit(self) -> None:
         idtext = self.idtext.get()
-        av = AccountViewer(self, access=self.access, identity=self.identity)
+        av = AccountViewer(self, client=self.client)
         if self.mode.get() == "Library ID":
             try:
                 lid = int(idtext)
             except ValueError:
                 _ = tkmsgbox.showerror("Error", "Modern ID must be numeric")
                 return
-            av.add_row(self.access.fetch_by_library_identifier(self.identity.employee_id, self.identity.session, lid))
+            av.add_row(self.client.fetch_by_library_identifier(lid))
         else:
-            av.add_row(self.access.fetch_by_old_library_identifier(self.identity.employee_id, self.identity.session, idtext))
+            av.add_row(self.client.fetch_by_old_library_identifier(idtext))
 
 class AccountViewer(tk.Toplevel):
     COLS: list[str] = ["Library ID", "First Name", "Last Name", "E-Mail", "Old Library ID"]
 
-    access: DBAccess
-    identity: Identity
+    client: Remotedb
 
     rows: list[list[tuple[tk.Widget, tk.StringVar]]]
 
-    def __init__(self, master: tk.Misc | None = None, *, access: DBAccess, identity: Identity) -> None:
+    def __init__(self, master: tk.Misc | None = None, *, client: Remotedb) -> None:
         super().__init__(master)
-        self.access = access
-        self.identity = identity
+        self.client = client
 
         self.rows = []
 
@@ -87,10 +81,10 @@ class AccountViewer(tk.Toplevel):
     def on_submit(self) -> None:
         for row in self.rows:
             lid, fn, ln, email, old_lid = int(row[0][1].get()), *(x.get() for _, x in row[1:])
-            customer = self.access.fetch_by_library_identifier(self.identity.employee_id, self.identity.session, lid)
+            customer = self.client.fetch_by_library_identifier(lid)
             customer.first_name = fn
             customer.last_name = ln
             customer.email = email
             customer.old_library_id = old_lid if old_lid else None
-            self.access.store(self.identity.employee_id, self.identity.session, customer)
+            self.client.store(customer)
         self.destroy()

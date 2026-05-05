@@ -2,6 +2,7 @@
 
 import sys, os
 
+
 here = os.path.realpath(os.path.dirname(__file__))
 sys.path.append(here)
 os.chdir(here)
@@ -11,15 +12,15 @@ import datetime
 import tkinter as tk
 from typing import override
 
-from .staffui.identity import Identity
 from .staffui.accountwizard import AccountCreationInterface, mock_get_account_creation_interface_form_field
 
+from .services.fakeremotedb import FakeRemotedb
 from .services.libraryidgen import LibraryIdSource
+from .services.staffdbaccess import StaffDBAccess
+from .services.clientdbaccess import ClientDBAccess
 from .services.localcustomerdb import LocalCustomerDB
 from .services.interface.dbaccess import PriviliegeError
 from .services.interface.customerdb import CustomerDB
-from .services.staffdbaccess import StaffDBAccess
-from .services.clientdbaccess import ClientDBAccess
 
 from .models.staff import Staff
 from .models.customer import Customer
@@ -274,39 +275,20 @@ class AccountWizardTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.root.destroy()
 
-    def test_account_creation_interface_present(self) -> None:  # FRQ-3.1, FRQ-3.2
-        with open("test_single_dup.json", "wb") as fw:
-            with open("test_single.json", "rb") as fr:
-                _ = fw.write(fr.read())
-
-        cdb = LocalCustomerDB("test_single_dup.json")
-        facade = StaffDBAccess(cdb)
-
-        identity = Identity(1, "asdf")
-
-        interface = AccountCreationInterface(self.root, identity=identity, access=facade)
-
-        fields = {
-            "First Name": "New",
-            "Last Name": "User",
-            "E-Mail": "sdfgfdxhb@hfgjn.dfgbfc",
-            "Old Library ID": ""
-        }
-
-        for field_name, value in fields.items():
-            mock_get_account_creation_interface_form_field(interface, field_name).set(value)
-
     def test_account_creation_interface_present(self) -> None:  # FRQ-3.1, FRQ-3.2, FRQ-3.3
         with open("test_single_dup2.json", "wb") as fw:
             with open("test_single.json", "rb") as fr:
                 _ = fw.write(fr.read())
 
         cdb = LocalCustomerDB("test_single_dup2.json")
-        facade = StaffDBAccess(cdb)
+        # facade = StaffDBAccess(cdb)
 
-        identity = Identity(1, "asdf")
+        fakeremote = FakeRemotedb(cdb)
+        fakeremote.log_on_as_staff(1, "meow")
 
-        interface = AccountCreationInterface(self.root, identity=identity, access=facade)
+        # identity = Identity(1, "asdf")
+
+        interface = AccountCreationInterface(self.root, client=fakeremote)
 
         fields = {
             "First Name": "New",
@@ -318,4 +300,4 @@ class AccountWizardTests(unittest.TestCase):
         for field_name, value in fields.items():
             mock_get_account_creation_interface_form_field(interface, field_name).set(value)
 
-        interface.on_submit()
+        interface.on_submit(True)

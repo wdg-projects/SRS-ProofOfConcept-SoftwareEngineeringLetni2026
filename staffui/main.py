@@ -1,24 +1,29 @@
 import sys, os
 
-here = os.path.realpath(os.path.dirname(__file__))
+here = os.path.realpath(os.path.dirname(os.path.dirname(__file__)))
 sys.path.append(here)
 os.chdir(here)
 
-from .identity import Identity
-# from .accountwizard import AccountCreationInterface
-from .viewer import AccountSearcher
+# from .viewer import AccountSearcher
+from .login import LogIn, MainPanel
 
-# from ..models.customer import Customer
-
+from ..services.fakeremotedb import FakeRemotedb
 from ..services.localcustomerdb import LocalCustomerDB
-from ..services.staffdbaccess import StaffDBAccess
+
+from ..services.interface.remotedb import Remotedb
 
 import tkinter as tk
 
+def connect() -> Remotedb:
+    lcdb = LocalCustomerDB("exampledb.json")
+    return FakeRemotedb(lcdb)
+
 root = tk.Tk()
-# AccountCreationInterface(root, access=None, identity=None).pack()
-lcdb = LocalCustomerDB("/home/shared/projhere/SEMESTR4/se_proj/test_single.json")
-facade = StaffDBAccess(lcdb)
-_ = AccountSearcher(root, access=facade, identity=Identity(1, "asdf"))
+root.withdraw()
+
+client = connect()
+def done() -> None:
+    _ = MainPanel(root, client=client)
+_ = LogIn(root, client=client, done=done)
 
 root.mainloop()
